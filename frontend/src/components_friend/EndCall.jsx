@@ -1,25 +1,74 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
 import './EndCall.css'
 import { IoIosCloseCircle } from "react-icons/io";
 import { MdCallEnd } from "react-icons/md";
 import { useNavigate } from 'react-router-dom';
 
-const EndCall = ({ duration, summary, transcript }) => {
+const EndCall = ({ duration, summary, transcript, meetingId }) => {
     const navigate = useNavigate();
     const role = localStorage.getItem("role");
     const isDoctor = role === "doctor";
 
+    const [fetchedTranscript, setFetchedTranscript] = useState(transcript || "");
+    const [loadingTranscript, setLoadingTranscript] = useState(false);
+
+    // Resolve meeting ID — try prop first, then localStorage (UUID), then URL param
+    // URL param might be numeric pk (e.g. ?meeting_id=14) — we support both
+    const resolvedMeetingId =
+        meetingId ||
+        localStorage.getItem("current_meeting_uuid") ||
+        localStorage.getItem("meeting_id") ||
+        new URLSearchParams(window.location.search).get("meeting_id");
+
+    useEffect(() => {
+        if (!resolvedMeetingId) return;
+
+        const token = localStorage.getItem("access_token");
+        setLoadingTranscript(true);
+
+        fetch(`/api/meeting/${resolvedMeetingId}/`, {
+            headers: {
+                "Authorization": `Bearer ${token}`,
+                "Content-Type": "application/json",
+            }
+        })
+            .then(res => {
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return res.json();
+            })
+            .then(data => {
+                // Backend field is speech_to_text, not transcript
+                const text = data.speech_to_text || data.transcript || "";
+                setFetchedTranscript(text);
+            })
+            .catch(err => {
+                console.error("Transcript fetch error:", err);
+                // Fall back to prop if fetch fails
+                if (transcript) setFetchedTranscript(transcript);
+            })
+            .finally(() => setLoadingTranscript(false));
+
+    }, [resolvedMeetingId]); // Don't depend on transcript prop to avoid re-fetch loops
+
     const goHome = () => {
+        localStorage.removeItem("current_meeting_uuid");
+        localStorage.removeItem("meeting_id");
         if (isDoctor) navigate("/doctor", { replace: true });
         else if (role === "patient") navigate("/patient", { replace: true });
         else navigate("/", { replace: true });
     };
 
     const viewTranscript = () => {
-        // Open transcript in a new tab or show it — for now alert with content
-        if (transcript) {
+        if (loadingTranscript) {
+            alert("Still loading transcript, please wait...");
+            return;
+        }
+        if (fetchedTranscript && fetchedTranscript.trim()) {
             const win = window.open("", "_blank");
-            win.document.write(`<pre style="font-family:sans-serif;padding:24px;font-size:14px;line-height:1.7">${transcript}</pre>`);
+            win.document.write(
+                `<pre style="font-family:sans-serif;padding:24px;font-size:14px;line-height:1.7;white-space:pre-wrap">${fetchedTranscript}</pre>`
+            );
+            win.document.close();
         } else {
             alert("No transcript available for this session.");
         }
@@ -31,6 +80,7 @@ const EndCall = ({ duration, summary, transcript }) => {
     return (
         <div className="wrapper">
             <div className='end-container'>
+
                 {/* ── X closes to home ── */}
                 <div className="end-navbar">
                     <div className="end-cross" onClick={goHome}>
@@ -45,8 +95,12 @@ const EndCall = ({ duration, summary, transcript }) => {
                         </div>
                         <div className='end-call-text'>Call Ended</div>
                         <div className="end-call-dur">
-                            <div style={{ fontFamily: 'Montserrat', fontWeight: '500', fontSize: '13px', color: '#9E9E9E' }}>Call Duration : </div>
-                            <div style={{ fontFamily: 'Montserrat', fontWeight: '600', fontSize: '15px', color: 'black' }}>{fmt(duration || 0)}</div>
+                            <div style={{ fontFamily: 'Montserrat', fontWeight: '500', fontSize: '13px', color: '#9E9E9E' }}>
+                                Call Duration :
+                            </div>
+                            <div style={{ fontFamily: 'Montserrat', fontWeight: '600', fontSize: '15px', color: 'black' }}>
+                                {fmt(duration || 0)}
+                            </div>
                         </div>
                     </div>
 
@@ -70,7 +124,9 @@ const EndCall = ({ duration, summary, transcript }) => {
                     {/* ── Buttons — doctor sees View Transcript, patient sees Back to Home ── */}
                     <div className="end-buttons">
                         {isDoctor ? (
-                            <div className="button1" onClick={viewTranscript}>View Transcript</div>
+                            <div className="button1" onClick={viewTranscript}>
+                                {loadingTranscript ? "Loading..." : "View Transcript"}
+                            </div>
                         ) : (
                             <div className="button1" onClick={goHome}>Back to Home</div>
                         )}
@@ -78,9 +134,10 @@ const EndCall = ({ duration, summary, transcript }) => {
                         <div className="button3" onClick={() => alert("Feedback request sent.")}>Ask for Feedback</div>
                     </div>
                 </div>
+
             </div>
         </div>
     );
 }
 
-export default EndCall
+export default EndCall;

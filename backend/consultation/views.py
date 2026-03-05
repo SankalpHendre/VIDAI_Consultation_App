@@ -238,7 +238,6 @@ class DoctorAvailabilityView(APIView):
         return Response(DoctorAvailabilitySerializer(availability, many=True).data)
 
     def post(self, request):
-        # IsAuthenticated already enforced by get_permissions()
         if request.user.role != "doctor":
             return Response(
                 {"error": "Doctors only"},
@@ -259,27 +258,21 @@ class DoctorAvailabilityView(APIView):
         # Robust clinic lookup
         clinic = None
         try:
-            # Try by PK
             clinic = Clinic.objects.get(id=clinic_id_or_name)
         except (Clinic.DoesNotExist, ValueError, TypeError):
             try:
-                # Try by Name
                 clinic = Clinic.objects.get(name=clinic_id_or_name)
             except Clinic.DoesNotExist:
-                # Try by clinic_id string
                 clinic = Clinic.objects.filter(clinic_id=clinic_id_or_name).first()
 
         if not clinic:
             return Response({"error": "Clinic not found"}, status=status.HTTP_404_NOT_FOUND)
 
-        # Use manual get/update/create instead of update_or_create to avoid
-        # select_for_update() which causes "database is locked" on concurrent
-        # SQLite writes (e.g. when frontend saves multiple days simultaneously).
         import time as _time
         from django.db import transaction as _tx, OperationalError as _OpErr
 
         last_exc = None
-        for attempt in range(4):          # up to 4 tries
+        for attempt in range(4):
             try:
                 with _tx.atomic():
                     existing = DoctorAvailability.objects.filter(
@@ -300,10 +293,10 @@ class DoctorAvailabilityView(APIView):
                             start_time=start_time, end_time=end_time,
                         )
                         created = True
-                break                     # success — exit retry loop
+                break
             except _OpErr as e:
                 last_exc = e
-                _time.sleep(0.25)         # wait 250 ms then retry
+                _time.sleep(0.25)
         else:
             return Response(
                 {"error": "Database busy — please try again."},
@@ -345,7 +338,6 @@ class DoctorAvailabilityCheckView(APIView):
         today    = now_local.weekday()
         cur_time = now_local.time()
 
-        # Check 1: Explicit working hours
         is_in_hours = DoctorAvailability.objects.filter(
             doctor_id=doctor_id,
             clinic__isnull=False,
@@ -356,10 +348,8 @@ class DoctorAvailabilityCheckView(APIView):
         if is_in_hours:
             return True
 
-        # Check 2: Active or upcoming meeting
-        # If the doctor has a meeting starting soon or ongoing, consider them available
         start_buffer = now_local + timedelta(minutes=15)
-        end_buffer   = now_local - timedelta(minutes=60) # Assume 1h max
+        end_buffer   = now_local - timedelta(minutes=60)
         has_meeting = Meeting.objects.filter(
             doctor_id=doctor_id,
             status__in=["scheduled", "started"],
@@ -552,7 +542,6 @@ class MeetingBookView(APIView):
             doctor_id   = None
             if doctor_data:
                 if isinstance(doctor_data, dict):
-                    # Prefer username lookup; fall back to id
                     uname = doctor_data.get("username")
                     if uname:
                         doc_obj = User.objects.filter(username=uname).first()
@@ -563,10 +552,9 @@ class MeetingBookView(APIView):
                 elif isinstance(doctor_data, int):
                     doctor_id = doctor_data
 
-            # -- Other fields ---------------------------------------------- 
+            # -- Other fields ----------------------------------------------
             sales_id = request.data.get("sales_id")
 
-            # FIX: read appointment_reason from top-level key (not nested dict)
             reason     = (
                 request.data.get("appointment_reason")
                 or request.data.get("appointment", {}).get("reason", "")
@@ -600,14 +588,16 @@ class MeetingBookView(APIView):
 
             caller_role = request.user.role
 
-            # -- Date Shift Fix / Timezone Awareness ------------------------
+            # -- Timezone-aware datetime ------------------------------------
             try:
                 sched_dt = datetime.fromisoformat(sched_time)
                 if timezone.is_naive(sched_dt):
-                    # Interpret naive time from frontend as local (Asia/Kolkata)
                     sched_dt = timezone.make_aware(sched_dt, timezone.get_current_timezone())
             except (ValueError, TypeError):
-                return Response({"error": f"Invalid date/time format: {sched_time}"}, status=status.HTTP_400_BAD_REQUEST)
+                return Response(
+                    {"error": f"Invalid date/time format: {sched_time}"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
 
             day_of_week = sched_dt.weekday()
             slot_time   = sched_dt.time()
@@ -619,32 +609,33 @@ class MeetingBookView(APIView):
             if caller_role == "sales":
                 sales_user   = request.user
                 patient_data = request.data.get("patient")
-                # patient_data might be an ID or a dict
                 if isinstance(patient_data, dict):
                     patient = create_patient(patient_data)
                 elif patient_data:
                     patient = get_object_or_404(User, id=patient_data)
-                
+
                 if not patient:
-                    return Response({"error": "Patient is required for sales booking"}, status=status.HTTP_400_BAD_REQUEST)
+                    return Response(
+                        {"error": "Patient is required for sales booking"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
 
             elif caller_role == "doctor":
-                # DOCTOR BOOKING FOR PATIENT
                 patient_data = request.data.get("patient")
                 if isinstance(patient_data, dict):
                     patient = create_patient(patient_data)
                 elif patient_data:
-                    # In case doctor sends just patient ID
                     patient = get_object_or_404(User, id=patient_data)
-                
+
                 if not patient:
-                    return Response({"error": "Patient is required for doctor booking"}, status=status.HTTP_400_BAD_REQUEST)
-                
-                # If doctor is booking, they are the 'doctor' for the meeting
+                    return Response(
+                        {"error": "Patient is required for doctor booking"},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
+
                 if not doctor_id:
                     doctor_id = request.user.id
             else:
-                # PATIENT BOOKING THEMSELVES
                 patient = request.user
                 if sales_id:
                     try:
@@ -652,7 +643,7 @@ class MeetingBookView(APIView):
                     except User.DoesNotExist:
                         pass
 
-            # -- SALES MEETING ----------------------------------------------
+            # -- SALES MEETING ---------------------------------------------
             if is_sales_mtg:
                 if not sales_user:
                     return Response(
@@ -660,7 +651,6 @@ class MeetingBookView(APIView):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
 
-                # SOFT validation: only check if availability rows exist
                 any_avail = DoctorAvailability.objects.filter(
                     doctor=sales_user, clinic__isnull=True,
                 ).exists()
@@ -707,7 +697,7 @@ class MeetingBookView(APIView):
                     "status":         meeting.status,
                 }, status=status.HTTP_201_CREATED)
 
-            # -- CONSULTATION ---------------------------------------------- 
+            # -- CONSULTATION ----------------------------------------------
             if not clinic_id or not doctor_id:
                 return Response(
                     {"error": "clinic and doctor are required for consultations"},
@@ -720,13 +710,9 @@ class MeetingBookView(APIView):
             if caller_role == "sales":
                 appt_type = "consultation"
 
-            # Re-use the timezone-aware sched_dt already computed above (lines 572-576)
-            # Do NOT re-parse sched_time naively here — that loses timezone and shifts the day
             day_of_week = sched_dt.weekday()
             slot_time   = sched_dt.time()
 
-            # SOFT validation: only enforce if the doctor has ANY availability
-            # rows configured for this clinic. If none exist, assume open schedule.
             any_avail = DoctorAvailability.objects.filter(
                 doctor=doctor, clinic=clinic,
             ).exists()
@@ -860,10 +846,30 @@ class MeetingListView(APIView):
 
 
 class MeetingDetailView(APIView):
+    """
+    Returns full meeting details including speech_to_text (transcript).
+    Supports both UUID meeting_id field AND numeric pk so the frontend
+    can pass either ?meeting_id=<uuid> or ?meeting_id=14 and still get a result.
+    """
     permission_classes = [AllowAny]
 
     def get(self, request, meeting_id):
-        meeting = get_object_or_404(Meeting, meeting_id=meeting_id)
+        # 1. Try UUID meeting_id field first (preferred)
+        meeting = Meeting.objects.filter(meeting_id=meeting_id).first()
+
+        # 2. Fall back to numeric primary key
+        if not meeting:
+            try:
+                meeting = Meeting.objects.filter(pk=int(meeting_id)).first()
+            except (ValueError, TypeError):
+                pass
+
+        if not meeting:
+            return Response(
+                {"error": "Meeting not found"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
         return Response(MeetingSerializer(meeting).data)
 
 
@@ -940,7 +946,7 @@ class MeetingStartView(APIView):
 
 class DirectRoomEntryView(APIView):
     """
-    No-auth entry point.  Accepts meeting_id + room_id, marks meeting as
+    No-auth entry point. Accepts meeting_id + room_id, marks meeting as
     started (if scheduled), and returns the room details.
     Used by both DoctorHome and PatientHome instead of MeetingStartView.
     """
@@ -988,17 +994,41 @@ class DirectRoomEntryView(APIView):
 # =============================================================================
 
 class MeetingEndView(APIView):
+    """
+    Ends the meeting and saves the transcript.
+
+    KEY FIX: Only overwrite speech_to_text if the caller is sending a
+    non-empty transcript. This prevents the doctor's browser (which has
+    no local speech-to-text) from wiping out the transcript the patient
+    already saved when they ended the call on their side.
+    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
         try:
             meeting_id     = request.data.get("meeting_id")
-            speech_to_text = request.data.get("speech_to_text", "")
+            speech_to_text = (request.data.get("speech_to_text") or "").strip()
+
             meeting = get_object_or_404(Meeting, meeting_id=meeting_id)
-            meeting.status         = "ended"
-            meeting.speech_to_text = speech_to_text
+
+            # Always mark as ended
+            meeting.status = "ended"
+
+            # Only append/set transcript when caller actually sends content.
+            # Doctor ends the call with no speech_to_text → existing transcript preserved.
+            if speech_to_text:
+                meeting.speech_to_text = (
+                    f"{meeting.speech_to_text}\n{speech_to_text}"
+                    if meeting.speech_to_text
+                    else speech_to_text
+                )
+
             meeting.save()
-            return Response({"status": "ended", "meeting_id": meeting.meeting_id})
+            return Response({
+                "status":         "ended",
+                "meeting_id":     meeting.meeting_id,
+                "has_transcript": bool(meeting.speech_to_text),
+            })
         except Exception:
             print(traceback.format_exc())
             return Response(
