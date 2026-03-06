@@ -4,19 +4,17 @@ import Draggable from "react-draggable";
 import { API_URL as API, WS_URL as WS } from "../config";
 import "./MeetingRoom.css";
 
-// ── Imports ──────────────────────────────────────────────────────────────────
-import TopNav from "../components_friend/TopNav";
-import RemoteVideo from "../components_friend/RemoteVideo";
+import TopNav       from "../components_friend/TopNav";
+import RemoteVideo  from "../components_friend/RemoteVideo";
 import RightSideBar from "../components_friend/RightSideBar";
-import ChatSidebar from "../components_friend/ChatSidebar";
+import ChatSidebar  from "../components_friend/ChatSidebar";
 import TransSideBar from "../components_friend/TransSideBar";
-import InfoSideBar from "../components_friend/InfoSideBar";
-import ApptDetails from "../components_friend/ApptDetails";
-import EndCall from "../components_friend/EndCall";
-// ─────────────────────────────────────────────────────────────────────────────
+import InfoSideBar  from "../components_friend/InfoSideBar";
+import ApptDetails  from "../components_friend/ApptDetails";
+import EndCall      from "../components_friend/EndCall";
 
 const COMMIT_DELAY = 250;
-const SELF_PREFIX = 0x01;
+const SELF_PREFIX  = 0x01;
 
 const ICE_CONFIG = {
   iceServers: [
@@ -28,53 +26,30 @@ const ICE_CONFIG = {
 
 const KNOWN_ROLES = ["doctor", "patient", "admin", "sales"];
 
-// ── GuestPreJoin ─────────────────────────────────────────────────────────────
+// ── GuestPreJoin ──────────────────────────────────────────────────────────────
 function GuestPreJoin({ onJoin }) {
   const [name, setName] = useState("");
-  const [err, setErr] = useState("");
-
+  const [err,  setErr]  = useState("");
   const handleSubmit = (e) => {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) { setErr("Please enter your name."); return; }
     onJoin(trimmed);
   };
-
   return (
-    <div style={{
-      position: "fixed", inset: 0, background: "#f1f5f9",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      fontFamily: "'Segoe UI', Arial, sans-serif", zIndex: 9999,
-    }}>
-      <div style={{
-        background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16,
-        boxShadow: "0 8px 40px rgba(0,0,0,0.10)", padding: "48px 52px",
-        width: "100%", maxWidth: 400, textAlign: "center",
-      }}>
-        <div style={{
-          width: 64, height: 64, borderRadius: "50%", background: "#eff6ff",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          margin: "0 auto 20px", fontSize: 28,
-        }}>🏥</div>
+    <div style={{ position: "fixed", inset: 0, background: "#f1f5f9", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Segoe UI', Arial, sans-serif", zIndex: 9999 }}>
+      <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16, boxShadow: "0 8px 40px rgba(0,0,0,0.10)", padding: "48px 52px", width: "100%", maxWidth: 400, textAlign: "center" }}>
+        <div style={{ width: 64, height: 64, borderRadius: "50%", background: "#eff6ff", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px", fontSize: 28 }}>🏥</div>
         <h2 style={{ margin: "0 0 6px", fontSize: "1.4rem", fontWeight: 700, color: "#0f172a" }}>Join Consultation</h2>
         <p style={{ margin: "0 0 28px", fontSize: "0.9rem", color: "#64748b" }}>Enter your name to join the meeting room.</p>
         <form onSubmit={handleSubmit}>
-          <input
-            type="text" placeholder="Your full name" value={name}
+          <input type="text" placeholder="Your full name" value={name}
             onChange={e => { setName(e.target.value); setErr(""); }} autoFocus
-            style={{
-              width: "100%", padding: "12px 14px", fontSize: "0.95rem",
-              border: `1px solid ${err ? "#f87171" : "#cbd5e1"}`, borderRadius: 8,
-              outline: "none", boxSizing: "border-box", color: "#0f172a",
-              background: "#f8fafc", marginBottom: err ? 6 : 16,
-            }}
-          />
+            style={{ width: "100%", padding: "12px 14px", fontSize: "0.95rem", border: `1px solid ${err ? "#f87171" : "#cbd5e1"}`, borderRadius: 8, outline: "none", boxSizing: "border-box", color: "#0f172a", background: "#f8fafc", marginBottom: err ? 6 : 16 }} />
           {err && <p style={{ margin: "0 0 12px", fontSize: "0.82rem", color: "#ef4444", textAlign: "left" }}>{err}</p>}
-          <button type="submit" style={{
-            width: "100%", padding: "12px", fontSize: "0.95rem", fontWeight: 600,
-            color: "#ffffff", background: "linear-gradient(135deg, #3b82f6, #2563eb)",
-            border: "none", borderRadius: 8, cursor: "pointer",
-          }}>Join Room →</button>
+          <button type="submit" style={{ width: "100%", padding: "12px", fontSize: "0.95rem", fontWeight: 600, color: "#ffffff", background: "linear-gradient(135deg, #3b82f6, #2563eb)", border: "none", borderRadius: 8, cursor: "pointer" }}>
+            Join Room →
+          </button>
         </form>
       </div>
     </div>
@@ -83,13 +58,11 @@ function GuestPreJoin({ onJoin }) {
 
 // ── MeetingRoom ───────────────────────────────────────────────────────────────
 export default function MeetingRoom() {
-  const { roomId } = useParams();
+  const { roomId }     = useParams();
   const [searchParams] = useSearchParams();
-
-  // meeting_id from URL — could be numeric pk ("14") or UUID string
-  const meetingId = searchParams.get("meeting_id");
-  const token = localStorage.getItem("token");
-  const navigate = useNavigate();
+  const meetingId      = searchParams.get("meeting_id");
+  const token          = localStorage.getItem("token");
+  const navigate       = useNavigate();
 
   const urlRole    = searchParams.get("role");
   const storedRole = localStorage.getItem("role");
@@ -102,79 +75,95 @@ export default function MeetingRoom() {
   const storedName = localStorage.getItem("full_name") || localStorage.getItem("username");
   const [guestName, setGuestName] = useState(isAuth ? "" : null);
 
-  const myName = isAuth ? (storedName || "User") : (guestName || "Guest");
-  const myRole = resolvedRole;
+  const myName  = isAuth ? (storedName || "User") : (guestName || "Guest");
+  const myRole  = resolvedRole;
   const isGuest = !isAuth;
 
-  // ── Refs ────────────────────────────────────────────────────────────────────
-  const [localStream, setLocalStream]         = useState(null);
-  const localStreamRef                        = useRef(null);
-  const peersRef                              = useRef({});
-  const [remotes, setRemotes]                 = useState([]);
+  // ── Refs ──────────────────────────────────────────────────────────────────
+  const [localStream, setLocalStream]   = useState(null);
+  const localStreamRef                  = useRef(null);
+  const peersRef                        = useRef({});
+  const [remotes, setRemotes]           = useState([]);
 
-  const sigWsRef    = useRef(null);
-  const myIdRef     = useRef(null);
+  const sigWsRef     = useRef(null);
+  const myIdRef      = useRef(null);
   const isMountedRef = useRef(true);
-  const sttWsRef    = useRef(null);
-  const audioCtxRef = useRef(null);
-  const procRef     = useRef(null);
-  const nodeRef     = useRef(null);
+  const sttWsRef     = useRef(null);
+  const audioCtxRef  = useRef(null);
+  const procRef      = useRef(null);   // eslint-disable-line
+  const nodeRef      = useRef(null);
 
-  const bufRef      = useRef("");
-  const timerRef    = useRef(null);
-  const latestRef   = useRef("");         // always holds latest transcript text
-  const meetingIdRef = useRef(meetingId); // UUID once resolved; numeric pk as fallback
+  const bufRef       = useRef("");
+  const timerRef     = useRef(null);
+  const latestRef    = useRef("");
+  const meetingIdRef = useRef(meetingId);
 
-  // ── State ───────────────────────────────────────────────────────────────────
-  const [micOn, setMicOn]               = useState(true);
-  const [camOn, setCamOn]               = useState(true);
+  // ── State ─────────────────────────────────────────────────────────────────
+  const [micOn, setMicOn]                     = useState(true);
+  const [camOn, setCamOn]                     = useState(true);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
-  const screenTrackRef                  = useRef(null);
-  const [connected, setConnected]       = useState(false);
-  const [sttStatus, setSttStatus]       = useState("");
-  const [transcript, setTranscript]     = useState("");
-  const [chatMessages, setChatMessages] = useState([]);
-  const [rightPanel, setRightPanel]     = useState(null);
-  const [duration, setDuration]         = useState(0);
+  const screenTrackRef                        = useRef(null);
+  const [connected, setConnected]             = useState(false);
+  const [sttStatus, setSttStatus]             = useState("");   // eslint-disable-line
+  const [transcript, setTranscript]           = useState("");
+  const [chatMessages, setChatMessages]       = useState([]);
+  const [rightPanel, setRightPanel]           = useState(null);
+  const [duration, setDuration]               = useState(0);
+  const callStartRef                          = useRef(null);
+  const [error, setError]                     = useState("");
+  const [participants, setParticipants]       = useState([]);
+  const [unreadChat, setUnreadChat]           = useState(0);
+  const [unreadTx, setUnreadTx]               = useState(0);
+  const [meetingEnded, setMeetingEnded]       = useState(false);
+  const [isMini, setIsMini]                   = useState(false);
+  const [meetingData, setMeetingData]         = useState(null);
 
-  // ── FIX: store call start time so both sides compute same-ish duration ──────
-  const callStartRef = useRef(null);
+  // ── Remote media state ────────────────────────────────────────────────────
+  // Both driven by WebSocket messages from the remote peer and filtered so
+  // we never apply our own echo to ourselves.
+  const [remoteIsMuted,  setRemoteIsMuted]  = useState(false);   // mic
+  const [remoteCamOff,   setRemoteCamOff]   = useState(false);   // camera
 
-  const [error, setError]               = useState("");
-  const [participants, setParticipants] = useState([]);
-  const [unreadChat, setUnreadChat]     = useState(0);
-  const [unreadTx, setUnreadTx]         = useState(0);
-  const [meetingEnded, setMeetingEnded] = useState(false);
-
-  // ── Integrated state ────────────────────────────────────────────────────────
-  const [isMini, setIsMini]         = useState(false);
-  const [meetingData, setMeetingData] = useState(null);
-
-  // ── Fetch meeting data ──────────────────────────────────────────────────────
+  // ── Fetch meeting data ────────────────────────────────────────────────────
   useEffect(() => {
     if (!meetingId) return;
-    const fetchMeeting = async () => {
+    (async () => {
       try {
         const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const res = await fetch(`${API}/api/meeting/${meetingId}/`, { headers });
+        const res  = await fetch(`${API}/api/meeting/${meetingId}/`, { headers });
         if (res.ok) {
           const data = await res.json();
           setMeetingData(data);
-          // If backend returned UUID meeting_id, store it so EndCall can fetch transcript
           if (data.meeting_id) {
             meetingIdRef.current = data.meeting_id;
             localStorage.setItem("current_meeting_uuid", data.meeting_id);
           }
         }
-      } catch (err) { console.error("Meeting fetch failed:", err); }
-    };
-    fetchMeeting();
+      } catch (e) { console.error("Meeting fetch failed:", e); }
+    })();
   }, [meetingId, token]);
 
-  // ── Duration timer — starts on connect ─────────────────────────────────────
+  // ── Persist chat + transcript on rejoin ───────────────────────────────────
+  const loadMeetingHistory = useCallback(async () => {
+    if (!meetingId) return;
+    try {
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      const res = await fetch(`${API}/api/meeting/${meetingId}/history/`, { headers });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.transcript?.trim()) {
+        setTranscript(data.transcript.trim());
+        latestRef.current = data.transcript.trim();
+      }
+      if (Array.isArray(data.chat_log) && data.chat_log.length > 0)
+        setChatMessages(data.chat_log);
+    } catch (e) { console.error("History load failed:", e); }
+  }, [meetingId, token]);
+
+  // ── Duration timer ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!connected) return;
-    callStartRef.current = Date.now();   // record wall-clock start
+    callStartRef.current = Date.now();
     const t = setInterval(() => setDuration(d => d + 1), 1000);
     return () => clearInterval(t);
   }, [connected]);
@@ -200,31 +189,43 @@ export default function MeetingRoom() {
   const _openSignalling = () => {
     const ws = new WebSocket(`${WS}/ws/call/${roomId}/`);
     sigWsRef.current = ws;
+
     ws.onopen = () => {
       if (!isMountedRef.current) return;
       setConnected(true);
       ws.send(JSON.stringify({ type: "join", name: myName, role: myRole }));
       _openSttWs();
+      loadMeetingHistory();
     };
+
     ws.onmessage = async (evt) => {
       let msg; try { msg = JSON.parse(evt.data); } catch { return; }
+
       switch (msg.type) {
+
         case "assigned":
           myIdRef.current = msg.id;
           setParticipants(msg.peers || []);
-          for (const peer of (msg.peers || [])) await _createPeerConnection(peer.id, peer.name, peer.role, true);
+          for (const p of (msg.peers || []))
+            await _createPeerConnection(p.id, p.name, p.role, true);
           break;
+
         case "peer_joined":
           setParticipants(prev => [...prev.filter(p => p.id !== msg.id), { id: msg.id, name: msg.name, role: msg.role }]);
           await _createPeerConnection(msg.id, msg.name, msg.role, false);
           break;
+
         case "peer_left":
           _removePeer(msg.id);
           setParticipants(prev => prev.filter(p => p.id !== msg.id));
+          setRemoteIsMuted(false);
+          setRemoteCamOff(false);   // reset cam state when peer leaves
           break;
+
         case "offer":  await _handleOffer(msg.from, msg.offer);   break;
         case "answer": await _handleAnswer(msg.from, msg.answer); break;
         case "ice":    await _handleIce(msg.from, msg.candidate); break;
+
         case "chat":
           setChatMessages(prev => [...prev, {
             text: msg.text, sender: msg.name,
@@ -232,13 +233,34 @@ export default function MeetingRoom() {
           }]);
           if (rightPanel !== "chat") setUnreadChat(n => n + 1);
           break;
+
         case "transcript_line":
           setTranscript(prev => prev ? `${prev}\n${msg.text}` : msg.text);
           if (rightPanel !== "notes") setUnreadTx(n => n + 1);
           break;
+
+        // ── MIC STATUS ────────────────────────────────────────────────────
+        // Filter our own echo, update the remote mic badge instantly.
+        case "mic_status":
+          if (msg.from !== myIdRef.current)
+            setRemoteIsMuted(msg.muted === true);
+          break;
+
+        // ── CAMERA STATUS ─────────────────────────────────────────────────
+        // When the remote peer turns their camera off, cam_off=true and we
+        // overlay their initials avatar on top of the (now black) video track.
+        // When they turn it back on, cam_off=false and the live video reappears.
+        case "cam_status":
+          if (msg.from !== myIdRef.current)
+            setRemoteCamOff(msg.cam_off === true);
+          break;
+
         default: break;
       }
     };
+
+    ws.onerror = (e) => console.error("WS error", e);
+    ws.onclose = () => setConnected(false);
   };
 
   const _createPeerConnection = async (peerId, peerName, peerRole, sendOffer) => {
@@ -284,7 +306,7 @@ export default function MeetingRoom() {
   const _handleIce = async (fromId, candidate) => {
     const peer = peersRef.current[fromId];
     if (peer && candidate)
-      try { await peer.pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch (_) { }
+      try { await peer.pc.addIceCandidate(new RTCIceCandidate(candidate)); } catch (_) {}
   };
 
   const _removePeer = (peerId) => {
@@ -300,7 +322,10 @@ export default function MeetingRoom() {
     sttWsRef.current = ws;
     ws.onmessage = evt => {
       const msg = JSON.parse(evt.data);
-      if (msg.type === "stt_ready") { setSttStatus("live"); setTimeout(() => _startSttCapture(ws), 100); }
+      if (msg.type === "stt_ready") {
+        setSttStatus("live");
+        setTimeout(() => _startSttCapture(ws), 100);
+      }
       if (msg.type === "transcript" && msg.is_final && msg.text) {
         const text = msg.text.trim(); if (!text) return;
         bufRef.current = bufRef.current ? `${bufRef.current} ${text}` : text;
@@ -313,11 +338,10 @@ export default function MeetingRoom() {
   const _startSttCapture = (ws) => {
     if (!localStreamRef.current) return;
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
+      const ctx  = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 16000 });
       audioCtxRef.current = ctx;
       const src  = ctx.createMediaStreamSource(localStreamRef.current);
       const proc = ctx.createScriptProcessor(4096, 1, 1);
-      procRef.current = proc;
       proc.onaudioprocess = e => {
         if (ws.readyState !== WebSocket.OPEN) return;
         const f32 = e.inputBuffer.getChannelData(0);
@@ -350,20 +374,42 @@ export default function MeetingRoom() {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ meeting_id: meetingIdRef.current, line }),
-      }).catch(() => { });
+      }).catch(() => {});
     }
   }, [myRole, myName, token, rightPanel]);
 
+  // ── Toggle mic ────────────────────────────────────────────────────────────
   const toggleMic = () => {
     const next = !micOn;
-    localStreamRef.current?.getAudioTracks().forEach(t => t.enabled = next);
+    localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = next; });
     setMicOn(next);
+    if (sigWsRef.current?.readyState === WebSocket.OPEN) {
+      sigWsRef.current.send(JSON.stringify({
+        type : "mic_status",
+        muted: !next,
+        name : myName,
+        role : myRole,
+      }));
+    }
   };
 
+  // ── Toggle camera ─────────────────────────────────────────────────────────
+  // 1. Enables/disables the local video track.
+  // 2. Broadcasts cam_status so the remote side can show/hide the initials
+  //    avatar overlay without waiting for the video track to go black.
   const toggleCamera = () => {
     const next = !camOn;
-    localStreamRef.current?.getVideoTracks().forEach(t => t.enabled = next);
+    localStreamRef.current?.getVideoTracks().forEach(t => { t.enabled = next; });
     setCamOn(next);
+
+    if (sigWsRef.current?.readyState === WebSocket.OPEN) {
+      sigWsRef.current.send(JSON.stringify({
+        type   : "cam_status",
+        cam_off: !next,   // cam_off = true when camera is turned OFF
+        name   : myName,
+        role   : myRole,
+      }));
+    }
   };
 
   const toggleScreenShare = async () => {
@@ -376,8 +422,7 @@ export default function MeetingRoom() {
           if (sender) sender.replaceTrack(camTrack);
         });
       }
-      screenTrackRef.current = null;
-      setIsScreenSharing(false);
+      screenTrackRef.current = null; setIsScreenSharing(false);
     } else {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
@@ -396,8 +441,7 @@ export default function MeetingRoom() {
               if (sender) sender.replaceTrack(camTrack);
             });
           }
-          screenTrackRef.current = null;
-          setIsScreenSharing(false);
+          screenTrackRef.current = null; setIsScreenSharing(false);
         };
       } catch (err) {
         if (err.name !== "NotAllowedError") setError("Screen share failed: " + err.message);
@@ -407,42 +451,37 @@ export default function MeetingRoom() {
 
   const sendChat = (text) => {
     if (!text || sigWsRef.current?.readyState !== WebSocket.OPEN) return;
+    const timestamp = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const newMsg = { text, sender: myName, timestamp };
     sigWsRef.current.send(JSON.stringify({ type: "chat", text }));
-    setChatMessages(prev => [...prev, {
-      text, sender: myName,
-      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-    }]);
+    setChatMessages(prev => [...prev, newMsg]);
+    if (meetingIdRef.current && token) {
+      fetch(`${API}/api/meeting/chat/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ meeting_id: meetingIdRef.current, message: newMsg }),
+      }).catch(() => {});
+    }
   };
 
-  // ── End call ────────────────────────────────────────────────────────────────
+  // ── End call ──────────────────────────────────────────────────────────────
   const handleEndCall = async () => {
-    // ── FIX: compute duration from wall-clock so it's consistent regardless
-    //         of when each participant's timer happened to start ──────────────
     const finalDuration = callStartRef.current
       ? Math.round((Date.now() - callStartRef.current) / 1000)
       : duration;
-
-    setConnected(false);       // stops duration timer
+    setConnected(false);
     setDuration(finalDuration);
-
     if (screenTrackRef.current) { screenTrackRef.current.stop(); screenTrackRef.current = null; }
     _cleanup();
-
-    // Save transcript to backend BEFORE showing EndCall screen
-    // Doctor sends empty string → backend will NOT overwrite patient's transcript (fixed in views.py)
     if (!isGuest && meetingIdRef.current && token) {
       try {
         await fetch(`${API}/api/meeting/end/`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify({
-            meeting_id: meetingIdRef.current,
-            speech_to_text: latestRef.current,   // empty string for doctor = no overwrite
-          }),
+          body: JSON.stringify({ meeting_id: meetingIdRef.current, speech_to_text: "" }),
         });
-      } catch { /* ignore — meeting ended locally regardless */ }
+      } catch {}
     }
-
     setMeetingEnded(true);
   };
 
@@ -451,9 +490,8 @@ export default function MeetingRoom() {
     Object.values(peersRef.current).forEach(p => p.pc.close());
     sigWsRef.current?.close();
     sttWsRef.current?.close();
-    if (audioCtxRef.current && audioCtxRef.current.state !== "closed") {
-      audioCtxRef.current.close().catch(() => { });
-    }
+    if (audioCtxRef.current && audioCtxRef.current.state !== "closed")
+      audioCtxRef.current.close().catch(() => {});
   };
 
   const formatTranscriptForUI = (str) => {
@@ -464,12 +502,9 @@ export default function MeetingRoom() {
     });
   };
 
-  // ── Guards ──────────────────────────────────────────────────────────────────
+  // ── Guards ────────────────────────────────────────────────────────────────
   if (guestName === null) return <GuestPreJoin onJoin={setGuestName} />;
 
-  // ── FIX: pass meetingId (UUID from ref if resolved, else numeric from URL)
-  //         AND the local transcript so EndCall always has something to show
-  //         while the backend fetch loads ────────────────────────────────────
   if (meetingEnded) {
     return (
       <EndCall
@@ -499,6 +534,9 @@ export default function MeetingRoom() {
                   name={mainRemote?.name || (meetingData?.doctor_name ? `Dr. ${meetingData.doctor_name}` : "Waiting...")}
                   role={mainRemote?.role}
                   patientMuted={!micOn}
+                  remoteMuted={remoteIsMuted}
+                  remoteCamOff={remoteCamOff}
+                  myName={myName}
                   toggleVideo={toggleCamera}
                   toggleAudio={toggleMic}
                   endCall={handleEndCall}
@@ -517,6 +555,9 @@ export default function MeetingRoom() {
             name={mainRemote?.name || (meetingData?.doctor_name ? `Dr. ${meetingData.doctor_name}` : "Waiting for partner...")}
             role={mainRemote?.role || "doctor"}
             patientMuted={!micOn}
+            remoteMuted={remoteIsMuted}
+            remoteCamOff={remoteCamOff}
+            myName={myName}
             toggleVideo={toggleCamera}
             toggleAudio={toggleMic}
             endCall={handleEndCall}
@@ -527,54 +568,21 @@ export default function MeetingRoom() {
         )}
 
         {rightPanel && !isMini && (
-          <div style={{
-            width: "300px", flexShrink: 0, height: "100%",
-            borderLeft: "1px solid #ece8f4", background: "#ffffff",
-            display: "flex", flexDirection: "column", overflow: "hidden",
-            boxShadow: "-2px 0 12px rgba(100,80,200,0.07)",
-          }}>
-            {rightPanel === "chat" && (
-              <ChatSidebar
-                activeSidebar={rightPanel} setActiveSidebar={setRightPanel}
-                messages={chatMessages} onSendMessage={sendChat} myName={myName}
-              />
-            )}
-            {rightPanel === "notes" && (
-              <TransSideBar
-                activeSidebar={rightPanel} setActiveSidebar={setRightPanel}
-                notes={formatTranscriptForUI(transcript)}
-              />
-            )}
-            {rightPanel === "person" && (
-              <InfoSideBar
-                activeSidebar={rightPanel} setActiveSidebar={setRightPanel}
-                patientData={meetingData?.patient}
-              />
-            )}
-            {rightPanel === "alert" && (
-              <ApptDetails
-                activeSidebar={rightPanel} setActiveSidebar={setRightPanel}
-                apptData={meetingData}
-              />
-            )}
+          <div style={{ width: "300px", flexShrink: 0, height: "100%", borderLeft: "1px solid #ece8f4", background: "#ffffff", display: "flex", flexDirection: "column", overflow: "hidden", boxShadow: "-2px 0 12px rgba(100,80,200,0.07)" }}>
+            {rightPanel === "chat"   && <ChatSidebar  activeSidebar={rightPanel} setActiveSidebar={setRightPanel} messages={chatMessages} onSendMessage={sendChat} myName={myName} />}
+            {rightPanel === "notes"  && <TransSideBar activeSidebar={rightPanel} setActiveSidebar={setRightPanel} notes={formatTranscriptForUI(transcript)} />}
+            {rightPanel === "person" && <InfoSideBar  activeSidebar={rightPanel} setActiveSidebar={setRightPanel} patientData={meetingData?.patient} />}
+            {rightPanel === "alert"  && <ApptDetails  activeSidebar={rightPanel} setActiveSidebar={setRightPanel} apptData={meetingData} />}
           </div>
         )}
 
         {!rightPanel && !isMini && (
-          <RightSideBar
-            activeSidebar={rightPanel}
-            setActiveSidebar={setRightPanel}
-            unreadChat={unreadChat > 0}
-          />
+          <RightSideBar activeSidebar={rightPanel} setActiveSidebar={setRightPanel} unreadChat={unreadChat > 0} />
         )}
       </div>
 
       {error && (
-        <div style={{
-          position: "fixed", bottom: "90px", right: "20px",
-          background: "#ff4444", color: "white",
-          padding: "10px 20px", borderRadius: "8px", zIndex: 1000,
-        }}>
+        <div style={{ position: "fixed", bottom: "90px", right: "20px", background: "#ff4444", color: "white", padding: "10px 20px", borderRadius: "8px", zIndex: 1000 }}>
           {error}
         </div>
       )}

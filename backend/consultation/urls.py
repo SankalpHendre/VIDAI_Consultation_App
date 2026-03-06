@@ -16,6 +16,7 @@ from .views import (
     SalesAvailableSlotsView,
     MeetingBookView,
     DoctorAppointmentListView,
+    DoctorPastMeetingsView,          # ← Task 2
     PatientAppointmentListView,
     SalesAppointmentListView,
     MeetingListView,
@@ -27,19 +28,19 @@ from .views import (
 )
 
 urlpatterns = [
-    # -- Auth ---------------------------------------------------------------- 
+    # -- Auth ----------------------------------------------------------------
     path("login/",   LoginView.as_view(),   name="login"),
     path("profile/", ProfileView.as_view(), name="profile"),
 
-    # -- User management ------------------------------------------------------ 
+    # -- User management ------------------------------------------------------
     path("users/create/",   UserCreateView.as_view(),  name="user-create"),
     path("users/patients/", PatientListView.as_view(), name="patient-list"),
     path("users/sales/",    SalesListView.as_view(),   name="sales-list"),
 
-    # -- Clinics -------------------------------------------------------------- 
+    # -- Clinics --------------------------------------------------------------
     path("clinics/", ClinicListCreateView.as_view(), name="clinics"),
 
-    # -- Doctors -------------------------------------------------------------- 
+    # -- Doctors --------------------------------------------------------------
     path("doctors/",
          DoctorListView.as_view(), name="doctor-list"),
     path("doctor/availability/<int:doctor_id>/",
@@ -51,7 +52,7 @@ urlpatterns = [
     path("doctor/slots/<int:doctor_id>/",
          DoctorAvailableSlotsView.as_view(), name="doctor-slots"),
 
-    # -- Sales availability ----------------------------------------------------
+    # -- Sales availability ---------------------------------------------------
     path("sales/availability/<int:sales_id>/",
          SalesAvailabilityView.as_view(), name="sales-availability"),
     path("sales/set-availability/",
@@ -59,12 +60,14 @@ urlpatterns = [
     path("sales/slots/<int:sales_id>/",
          SalesAvailableSlotsView.as_view(), name="sales-slots"),
 
-    # -- Appointments / meetings (static paths BEFORE wildcard) -------------- 
+    # -- Appointments / meetings (static paths BEFORE wildcard) --------------
     path("book-appointment/",
          MeetingBookView.as_view(), name="book-appointment"),
 
     path("doctor/appointments/",
          DoctorAppointmentListView.as_view(), name="doctor-appointments"),
+    path("doctor/past-meetings/",
+         DoctorPastMeetingsView.as_view(), name="doctor-past-meetings"),   # ← Task 2
     path("patient/appointments/",
          PatientAppointmentListView.as_view(), name="patient-appointments"),
     path("meeting/sales/",
@@ -75,7 +78,7 @@ urlpatterns = [
     path("meeting/start/",
          MeetingStartView.as_view(), name="meeting-start"),
 
-    # -- Direct entry - no extra auth required beyond login ------------------ 
+    # -- Direct entry --------------------------------------------------------
     path("meeting/direct-entry/",
          DirectRoomEntryView.as_view(), name="meeting-direct-entry"),
 
@@ -84,7 +87,7 @@ urlpatterns = [
     path("append-transcript/",
          MeetingTranscriptAppendView.as_view(), name="append-transcript"),
 
-    # -- Wildcard LAST -------------------------------------------------------- 
+    # -- Wildcard LAST --------------------------------------------------------
     path("meeting/<str:meeting_id>/",
          MeetingDetailView.as_view(), name="meeting-detail"),
 ]

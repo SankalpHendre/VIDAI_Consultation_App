@@ -1,172 +1,222 @@
+/* ============================================================
+   RemoteVideo.css
+   ============================================================ */
+
 .container {
-    width: calc(100% - 80px);
-    /* leaves 80px on right for the fixed sidebar */
-    height: 81vh;
-    border-radius: 20px;
-    gap: 40px;
-    opacity: 1;
-    background: #F3F0FA;
-    backdrop-filter: blur(20px);
-    position: relative;
-    overflow: hidden;
-    margin: 18px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  width: calc(100% - 80px); /* leaves 80 px on right for the fixed sidebar */
+  height: 81vh;
+  border-radius: 20px;
+  gap: 40px;
+  opacity: 1;
+  background: #F3F0FA;
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+  margin: 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
 .container.sidebar-active {
-    width: 69.8%;
+  width: 69.8%;
 }
 
 .p-container {
-    width: 70vw;
-    height: 84vh;
-    border-radius: 20px;
-    gap: 40px;
-    opacity: 1;
-    background: #F3F0FA;
-    backdrop-filter: blur(20px);
-    position: relative;
-    overflow: hidden;
-    margin: 18px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  width: 70vw;
+  height: 84vh;
+  border-radius: 20px;
+  gap: 40px;
+  opacity: 1;
+  background: #F3F0FA;
+  backdrop-filter: blur(20px);
+  position: relative;
+  overflow: hidden;
+  margin: 18px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
+/* ── Waiting / avatar frame ── */
 .frame {
-    width: 250px;
-    height: 191px;
-    opacity: 1;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-
-
-
+  width: 250px;
+  height: 191px;
+  opacity: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
 }
 
+/* ── Initials circle inside .frame ── */
 .name {
-    width: 120px;
-    height: 120px;
-    border-radius: 50%;
-    padding: 0;
-    opacity: 1;
-    background: rgba(255, 255, 255, 0.75);
-    border: 2px solid rgba(255, 255, 255, 0.9);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    box-shadow: 0 4px 20px rgba(137, 106, 227, 0.15);
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  padding: 0;
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.75);
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0 4px 20px rgba(137, 106, 227, 0.15);
 }
+
+/* ── Camera-off badge shown below initials ── */
+.cam-off-badge {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.cam-off-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #334155;
+  text-align: center;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cam-off-pill {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  background: rgba(148, 163, 184, 0.14);
+  padding: 3px 12px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* ── MINI MODE ── */
 
 .mini-container {
-    width: 100%;
-    height: 52vh;
-    padding: 10px;
+  width: 100%;
+  height: 52vh;
+  padding: 10px;
 }
 
 .mini-frame {
-    width: 100%;
-    height: 100%;
+  width: 100%;
+  height: 100%;
 }
 
 .mini-name {
-    width: 80px;
-    height: 80px;
-    border-radius: 50%;
-    padding: 0;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  padding: 0;
 }
 
+.mini-cam-off-name {
+  font-size: 11px;
+}
+
+.mini-cam-off-pill {
+  font-size: 10px;
+  padding: 2px 8px;
+}
+
+/* ── Nav icon ── */
 .nav-icon {
-    width: 25px;
-    height: 20px;
-    border: 1px solid black;
-    border-radius: 5px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
-    transition: transform 0.2s ease box-shadow 0.2s ease;
+  width: 25px;
+  height: 20px;
+  border: 1px solid black;
+  border-radius: 5px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .nav-icon:hover {
-    transform: scale(1.15);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  transform: scale(1.15);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
 }
 
+/* ── Participant name / info badge (top-left) ── */
 .info {
-    padding: 6px 10px;
-    border-radius: 10px;
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    color: white;
-    background: rgba(0, 0, 0, 0.45);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    line-height: 1.4;
-    z-index: 10;
+  padding: 6px 10px;
+  border-radius: 10px;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  color: white;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  line-height: 1.4;
+  z-index: 10;
 }
 
+/* ── Call duration timer (below the info badge) ── */
 .time {
-    padding: 4px 10px;
-    border-radius: 8px;
-    position: absolute;
-    top: 68px;
-    left: 10px;
-    color: white;
-    background: rgba(0, 0, 0, 0.40);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
-    z-index: 10;
+  padding: 4px 10px;
+  border-radius: 8px;
+  position: absolute;
+  top: 68px;
+  left: 10px;
+  color: white;
+  background: rgba(0, 0, 0, 0.40);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 10;
 }
 
 .time-align {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
+/* ── Remote mic status badge (top-right) ── */
 .loc-mic {
-    height: 25px;
-    width: 25px;
-    border-radius: 14px;
-    border-width: 1px;
-    position: absolute;
-    top: 15px;
-    right: 20px;
-    background: rgba(151, 148, 148, 0.12);
-    backdrop-filter: blur(6px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  height: 25px;
+  width: 25px;
+  border-radius: 14px;
+  border-width: 1px;
+  position: absolute;
+  top: 15px;
+  right: 20px;
+  background: rgba(151, 148, 148, 0.12);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
 }
 
 .mini-loc-mic {
-    height: 25px;
-    width: 25px;
-    border-radius: 14px;
-    border-width: 1px;
-    position: absolute;
-    top: 15px;
-    left: 380px;
-    background: rgba(151, 148, 148, 0.12);
-    backdrop-filter: blur(6px);
-    display: flex;
-    justify-content: center;
-    align-items: center;
+  height: 25px;
+  width: 25px;
+  border-radius: 14px;
+  border-width: 1px;
+  position: absolute;
+  top: 15px;
+  left: 380px;
+  background: rgba(151, 148, 148, 0.12);
+  backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10;
 }
 
+/* ── Remote video element ── */
 .video-player {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100% !important;
-    height: 100% !important;
-    object-fit: cover
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover;
 }
-
-.video-player video {}

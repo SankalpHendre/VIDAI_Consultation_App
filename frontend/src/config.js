@@ -1,7 +1,7 @@
 // src/config.js
 // Centralized configuration for API endpoints
 
-const BASE_URL = "localhost:8000"; // Local Django server
+const BASE_URL = "192.168.10.191:8000"; // Local Django server
 // const BASE_URL = "192.168.10.191:8000";
 
 // Use http:// and ws:// for local development
