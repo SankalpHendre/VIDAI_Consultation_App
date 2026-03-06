@@ -457,7 +457,7 @@ export default function DoctorHome() {
             {/* Upcoming list */}
             <div className="upcoming-list" style={{ marginTop: 32 }}>
               <h3 style={{ color: "#64748b", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: 12, fontWeight: 700 }}>
-                Upcoming ({appointments.length})
+                All Appoinments ({appointments.length})
               </h3>
               {!appointments.length && (
                 <p style={{ color: "#94a3b8", textAlign: "center", padding: "32px 0" }}>No appointments found.</p>

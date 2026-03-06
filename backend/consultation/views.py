@@ -1,3 +1,4 @@
+import re
 import traceback
 from datetime import datetime, timedelta
 
@@ -19,6 +20,58 @@ from .serializers import (
     UserSerializer,
 )
 from .services import create_patient
+
+
+# =============================================================================
+# TRANSCRIPT FORMATTING HELPERS
+# =============================================================================
+
+# Matches speaker turns like:
+#   "Doctor (Amelia Scott): ..."  or  "Patient (Gracy Wade): ..."
+# and any variant produced by the STT pipeline.
+_SPEAKER_PATTERN = re.compile(
+    r'(?=(?:Doctor|Patient|Sales)\s*\([^)]+\)\s*:)',
+    re.IGNORECASE,
+)
+
+
+def _format_transcript(raw: str) -> str:
+    """
+    Convert a raw transcript blob into a clean, line-per-turn script.
+
+    Input (what the STT pipeline currently produces):
+        "Patient (Gracy Wade): Hello. Doctor (Amelia Scott): Good morning."
+
+    Output:
+        Patient (Gracy Wade): Hello.
+        Doctor (Amelia Scott): Good morning.
+    """
+    if not raw:
+        return ""
+
+    # Split on every speaker header boundary (zero-width lookahead).
+    turns = _SPEAKER_PATTERN.split(raw)
+
+    lines = []
+    for turn in turns:
+        cleaned = turn.strip()
+        if cleaned:
+            lines.append(cleaned)
+
+    return "\n".join(lines)
+
+
+def _append_transcript_line(existing: str, new_line: str) -> str:
+    """
+    Append a new speaker turn to an existing transcript, ensuring both
+    the existing content and the new line are properly formatted.
+    """
+    formatted_existing = _format_transcript(existing) if existing else ""
+    formatted_new      = _format_transcript(new_line)  if new_line  else ""
+
+    if formatted_existing and formatted_new:
+        return f"{formatted_existing}\n{formatted_new}"
+    return formatted_existing or formatted_new
 
 
 # =============================================================================
@@ -997,6 +1050,11 @@ class MeetingEndView(APIView):
     """
     Ends the meeting and saves the transcript.
 
+    Transcript is formatted as a proper script — one speaker turn per line:
+
+        Doctor (Amelia Scott): Good morning, how are you feeling?
+        Patient (Gracy Wade): I have a headache since yesterday.
+
     KEY FIX: Only overwrite speech_to_text if the caller is sending a
     non-empty transcript. This prevents the doctor's browser (which has
     no local speech-to-text) from wiping out the transcript the patient
@@ -1017,10 +1075,8 @@ class MeetingEndView(APIView):
             # Only append/set transcript when caller actually sends content.
             # Doctor ends the call with no speech_to_text → existing transcript preserved.
             if speech_to_text:
-                meeting.speech_to_text = (
-                    f"{meeting.speech_to_text}\n{speech_to_text}"
-                    if meeting.speech_to_text
-                    else speech_to_text
+                meeting.speech_to_text = _append_transcript_line(
+                    meeting.speech_to_text, speech_to_text
                 )
 
             meeting.save()
@@ -1038,6 +1094,21 @@ class MeetingEndView(APIView):
 
 
 class MeetingTranscriptAppendView(APIView):
+    """
+    Append a single speaker turn to the live transcript.
+
+    Expected payload:
+        {
+            "meeting_id": "<uuid>",
+            "line": "Doctor (Amelia Scott): The test results look normal."
+        }
+
+    Each call stores exactly one formatted speaker line so the transcript
+    grows as a clean script:
+
+        Doctor (Amelia Scott): The test results look normal.
+        Patient (Gracy Wade): That's a relief, thank you.
+    """
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -1050,10 +1121,11 @@ class MeetingTranscriptAppendView(APIView):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
             meeting = get_object_or_404(Meeting, meeting_id=meeting_id)
-            meeting.speech_to_text = (
-                f"{meeting.speech_to_text}\n{line}"
-                if meeting.speech_to_text
-                else line
+
+            # Format the incoming line (handles both already-labelled lines
+            # and raw blobs in case the client sends a multi-turn chunk).
+            meeting.speech_to_text = _append_transcript_line(
+                meeting.speech_to_text, line
             )
             meeting.save()
             return Response({"status": "appended"})

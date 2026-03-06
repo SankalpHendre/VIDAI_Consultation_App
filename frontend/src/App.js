@@ -4,6 +4,7 @@
 //  • "/" (login) is now a PUBLIC-ONLY route — authenticated users are
 //    immediately redirected to their role dashboard so the browser Back
 //    button can never take a logged-in user back to the login page.
+//  • /thanks is a PUBLIC route for the post-feedback thank-you screen.
 
 import React from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from "react-router-dom";
@@ -14,6 +15,7 @@ import DoctorHome from "./components/DoctorHome";
 import PatientHome from "./components/PatientHome";
 import SalesHome from "./components/SalesHome";
 import MeetingRoom from "./components/MeetingRoom";
+import SubmitFeedback from "./components_friend/SubmitFeedback";
 
 // ── Helper: map role → home path ─────────────────────────────────────────────
 function roleHomePath(role) {
@@ -62,13 +64,16 @@ export default function App() {
         <Route path="/" element={<PublicOnlyRoute><Login /></PublicOnlyRoute>} />
 
         {/* Role-locked dashboards */}
-        <Route path="/admin" element={<RoleRoute allowedRoles={["admin"]}  ><AdminHome /></RoleRoute>} />
-        <Route path="/doctor" element={<RoleRoute allowedRoles={["doctor"]} ><DoctorHome /></RoleRoute>} />
+        <Route path="/admin"   element={<RoleRoute allowedRoles={["admin"]}  ><AdminHome /></RoleRoute>} />
+        <Route path="/doctor"  element={<RoleRoute allowedRoles={["doctor"]} ><DoctorHome /></RoleRoute>} />
         <Route path="/patient" element={<RoleRoute allowedRoles={["patient"]}><PatientHome /></RoleRoute>} />
-        <Route path="/sales" element={<RoleRoute allowedRoles={["sales"]}  ><SalesHome /></RoleRoute>} />
+        <Route path="/sales"   element={<RoleRoute allowedRoles={["sales"]}  ><SalesHome /></RoleRoute>} />
 
         {/* Public room route — MeetingRoom shows guest pre-join screen if not authed */}
         <Route path="/room/:roomId" element={<MeetingRoom />} />
+
+        {/* Post-feedback thank-you screen — public so it works right after call ends */}
+        <Route path="/thanks" element={<SubmitFeedback />} />
 
         <Route path="*" element={<CatchAllRedirect />} />
 

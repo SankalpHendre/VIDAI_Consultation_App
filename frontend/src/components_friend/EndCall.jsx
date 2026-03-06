@@ -3,17 +3,20 @@ import './EndCall.css'
 import { IoIosCloseCircle } from "react-icons/io";
 import { MdCallEnd } from "react-icons/md";
 import { useNavigate } from 'react-router-dom';
+import ViewTranscript from './ViewTranscript';
+import PatientFeedback from './PatientFeedback';
 
 const EndCall = ({ duration, summary, transcript, meetingId }) => {
     const navigate = useNavigate();
     const role = localStorage.getItem("role");
     const isDoctor = role === "doctor";
+    const isPatient = role === "patient";
 
     const [fetchedTranscript, setFetchedTranscript] = useState(transcript || "");
     const [loadingTranscript, setLoadingTranscript] = useState(false);
+    const [showTranscript, setShowTranscript] = useState(false);
 
     // Resolve meeting ID — try prop first, then localStorage (UUID), then URL param
-    // URL param might be numeric pk (e.g. ?meeting_id=14) — we support both
     const resolvedMeetingId =
         meetingId ||
         localStorage.getItem("current_meeting_uuid") ||
@@ -37,24 +40,22 @@ const EndCall = ({ duration, summary, transcript, meetingId }) => {
                 return res.json();
             })
             .then(data => {
-                // Backend field is speech_to_text, not transcript
                 const text = data.speech_to_text || data.transcript || "";
                 setFetchedTranscript(text);
             })
             .catch(err => {
                 console.error("Transcript fetch error:", err);
-                // Fall back to prop if fetch fails
                 if (transcript) setFetchedTranscript(transcript);
             })
             .finally(() => setLoadingTranscript(false));
 
-    }, [resolvedMeetingId]); // Don't depend on transcript prop to avoid re-fetch loops
+    }, [resolvedMeetingId]);
 
     const goHome = () => {
         localStorage.removeItem("current_meeting_uuid");
         localStorage.removeItem("meeting_id");
         if (isDoctor) navigate("/doctor", { replace: true });
-        else if (role === "patient") navigate("/patient", { replace: true });
+        else if (isPatient) navigate("/patient", { replace: true });
         else navigate("/", { replace: true });
     };
 
@@ -63,25 +64,38 @@ const EndCall = ({ duration, summary, transcript, meetingId }) => {
             alert("Still loading transcript, please wait...");
             return;
         }
-        if (fetchedTranscript && fetchedTranscript.trim()) {
-            const win = window.open("", "_blank");
-            win.document.write(
-                `<pre style="font-family:sans-serif;padding:24px;font-size:14px;line-height:1.7;white-space:pre-wrap">${fetchedTranscript}</pre>`
-            );
-            win.document.close();
-        } else {
-            alert("No transcript available for this session.");
-        }
+        setShowTranscript(true);
     };
 
     const fmt = s =>
         `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
+    // ── Patient sees feedback form immediately ──
+    if (isPatient) {
+        return (
+            <PatientFeedback
+                duration={duration}
+                summary={summary}
+                onClose={goHome}
+            />
+        );
+    }
+
+    // ── Doctor clicks "View Transcript" → swap inline ──
+    if (showTranscript) {
+        return (
+            <ViewTranscript
+                transcript={fetchedTranscript}
+                onClose={() => setShowTranscript(false)}
+            />
+        );
+    }
+
+    // ── Doctor end-call screen ──
     return (
         <div className="wrapper">
             <div className='end-container'>
 
-                {/* ── X closes to home ── */}
                 <div className="end-navbar">
                     <div className="end-cross" onClick={goHome}>
                         <IoIosCloseCircle size={25} />
@@ -121,15 +135,10 @@ const EndCall = ({ duration, summary, transcript, meetingId }) => {
                         </ul>
                     </div>
 
-                    {/* ── Buttons — doctor sees View Transcript, patient sees Back to Home ── */}
                     <div className="end-buttons">
-                        {isDoctor ? (
-                            <div className="button1" onClick={viewTranscript}>
-                                {loadingTranscript ? "Loading..." : "View Transcript"}
-                            </div>
-                        ) : (
-                            <div className="button1" onClick={goHome}>Back to Home</div>
-                        )}
+                        <div className="button1" onClick={viewTranscript}>
+                            {loadingTranscript ? "Loading..." : "View Transcript"}
+                        </div>
                         <div className="button2">✨ Scan Transcript for AI Insights</div>
                         <div className="button3" onClick={() => alert("Feedback request sent.")}>Ask for Feedback</div>
                     </div>
