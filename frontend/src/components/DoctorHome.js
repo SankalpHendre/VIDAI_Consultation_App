@@ -117,6 +117,8 @@ function TranscriptViewer({ text }) {
 export default function DoctorHome() {
   const navigate = useNavigate();
   const token    = localStorage.getItem("token");
+  const fullName = localStorage.getItem("full_name") || "Doctor";
+
 
   // "calendar" | "book" | "past"
   const [section, setSection] = useState("calendar");
@@ -419,6 +421,7 @@ export default function DoctorHome() {
           <button className={`nav-btn avail-btn ${showAvail ? "active" : ""}`}
             onClick={() => { setShowAvail(v => !v); setSection("calendar"); }}>Availability</button>
           <div className="nav-divider" />
+          <p className="nav-greeting">Hi, {fullName}</p>
           <button className="nav-logout" onClick={handleLogout}>🚪 Logout</button>
         </div>
       </nav>
