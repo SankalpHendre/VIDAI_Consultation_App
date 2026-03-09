@@ -3,6 +3,7 @@ import traceback
 from datetime import datetime, timedelta
 
 from django.contrib.auth import authenticate
+from django.http import Http404
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 
@@ -41,22 +42,6 @@ def _format_transcript(raw: str) -> str:
 
 
 def _append_transcript_line(existing: str, new_line: str) -> str:
-    """
-    Append new_line to existing transcript with DEDUPLICATION.
-
-    Root cause of duplicates:
-      • append-transcript/ is called in real-time as the user speaks.
-      • meeting/end/ used to re-send the full local transcript → double-save.
-      • STT re-runs on reconnect and re-transcribes ambient/opening audio.
-
-    Fix strategy:
-      • MeetingRoom.js now sends speech_to_text="" on end-call so the
-        full-transcript double-save no longer happens (see MeetingRoom.js).
-      • Here we do a "recent-window" dedup: any incoming line that already
-        appears within the last DEDUP_WINDOW lines is silently dropped.
-        This catches reconnection-driven re-sends without losing genuine
-        repeated phrases spoken far apart in a long conversation.
-    """
     DEDUP_WINDOW = 30   # compare against the last N stored lines
 
     fmt_new = _format_transcript(new_line) if new_line else ""
@@ -105,6 +90,49 @@ def _expire_stale_meetings():
     to_end = [m.pk for m in active if now > _meeting_expiry(m)]
     if to_end:
         Meeting.objects.filter(pk__in=to_end).update(status="ended")
+
+
+def _get_meeting_by_key(meeting_key, select_related=None):
+    """Resolve a meeting by numeric PK or by room_id (UUID string).
+
+    Some parts of the frontend route via the room UUID (e.g. "meet-..."),
+    while others may still reference the integer primary key.
+
+    Args:
+        meeting_key: either an integer/str meeting_id or the string room_id.
+        select_related: optional iterable of related fields to eager-load.
+    """
+    if not meeting_key:
+        return None
+
+    qs = Meeting.objects
+    if select_related:
+        qs = qs.select_related(*select_related)
+
+    # If the caller passed the real room UUID (e.g. "meet-xxx"), try that first
+    if isinstance(meeting_key, str) and meeting_key.startswith("meet-"):
+        meeting = qs.filter(room_id=meeting_key).first()
+        if meeting:
+            return meeting
+
+    # Fall back to numeric meeting_id
+    try:
+        return qs.get(meeting_id=int(meeting_key))
+    except (ValueError, TypeError, Meeting.DoesNotExist):
+        pass
+
+    # Finally, try room_id for non-prefixed strings (older clients?)
+    if isinstance(meeting_key, str):
+        return qs.filter(room_id=meeting_key).first()
+
+    return None
+
+
+def _get_meeting_or_404(meeting_key):
+    meeting = _get_meeting_by_key(meeting_key)
+    if not meeting:
+        raise Http404("Meeting not found")
+    return meeting
 
 
 # =============================================================================
@@ -644,22 +672,46 @@ class MeetingListView(APIView):
             meetings = meetings.filter(clinic_id=clinic_id)
         return Response(MeetingSerializer(meetings.order_by("scheduled_time"), many=True).data)
 
-
+# ─── REPLACE your existing MeetingDetailView with this ───────────────────────
 class MeetingDetailView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request, meeting_id):
-        meeting = Meeting.objects.filter(meeting_id=meeting_id).first()
-        if not meeting:
-            try:
-                meeting = Meeting.objects.filter(pk=int(meeting_id)).first()
-            except (ValueError, TypeError):
-                pass
+        meeting = _get_meeting_by_key(meeting_id, select_related=("doctor", "patient", "clinic"))
         if not meeting:
             return Response({"error": "Meeting not found"}, status=status.HTTP_404_NOT_FOUND)
-        return Response(MeetingSerializer(meeting).data)
 
+        patient = meeting.patient
+        doctor  = meeting.doctor
 
+        data = {
+            "meeting_id":         str(meeting.meeting_id),
+            "room_id":            str(meeting.room_id),
+            "status":             meeting.status,
+            "scheduled_time":     meeting.scheduled_time.isoformat() if meeting.scheduled_time else None,
+            "duration":           meeting.duration,
+            "appointment_reason": meeting.appointment_reason or "",
+            "department":         meeting.department or "",
+            "remark":             meeting.remark or "",
+            "clinic":             meeting.clinic.name if meeting.clinic else "",
+
+            # Doctor
+            "doctor_name":     doctor.get_full_name() if doctor else "",
+            "doctor_username": doctor.username        if doctor else "",
+
+            # Patient — field names match exactly what InfoSideBar.jsx expects
+            "patient": {
+                "first_name":    patient.first_name          if patient and patient.first_name    else "",
+                "last_name":     patient.last_name           if patient and patient.last_name     else "",
+                "sex":           patient.sex                 if patient and patient.sex           else "",
+                "mobile":        patient.mobile              if patient and patient.mobile        else "",
+                "date_of_birth": str(patient.date_of_birth)  if patient and patient.date_of_birth else "",
+                "email":         patient.email               if patient and patient.email         else "",
+                "username":      patient.username            if patient                           else "",
+            } if patient else None,
+        }
+
+        return Response(data)
 # =============================================================================
 # MEETING START / DIRECT ENTRY
 # =============================================================================
@@ -672,7 +724,7 @@ class MeetingStartView(APIView):
             meeting_id = request.data.get("meeting_id")
             if not meeting_id:
                 return Response({"error": "meeting_id is required"}, status=status.HTTP_400_BAD_REQUEST)
-            meeting = get_object_or_404(Meeting, meeting_id=meeting_id)
+            meeting = _get_meeting_or_404(meeting_id)
             if meeting.status == "ended":
                 return Response({"error": "This appointment has already ended"}, status=status.HTTP_400_BAD_REQUEST)
             caller_role = "participant"
@@ -707,7 +759,9 @@ class DirectRoomEntryView(APIView):
             meeting_id = request.data.get("meeting_id"); room_id = request.data.get("room_id")
             if not meeting_id or not room_id:
                 return Response({"error": "meeting_id and room_id are required"}, status=status.HTTP_400_BAD_REQUEST)
-            meeting = get_object_or_404(Meeting, meeting_id=meeting_id, room_id=room_id)
+            meeting = _get_meeting_or_404(meeting_id)
+            if meeting.room_id != room_id:
+                return Response({"error": "Meeting not found."}, status=status.HTTP_404_NOT_FOUND)
             if meeting.status == "ended":
                 return Response({"error": "This appointment has already ended."}, status=status.HTTP_400_BAD_REQUEST)
             now = timezone.now()
@@ -739,7 +793,7 @@ class MeetingEndView(APIView):
         try:
             meeting_id     = request.data.get("meeting_id")
             speech_to_text = (request.data.get("speech_to_text") or "").strip()
-            meeting = get_object_or_404(Meeting, meeting_id=meeting_id)
+            meeting = _get_meeting_or_404(meeting_id)
             if speech_to_text:
                 meeting.speech_to_text = _append_transcript_line(meeting.speech_to_text, speech_to_text)
             if timezone.now() > _meeting_expiry(meeting):
@@ -762,7 +816,7 @@ class MeetingTranscriptAppendView(APIView):
             line       = (request.data.get("line") or "").strip()
             if not meeting_id or not line:
                 return Response({"error": "meeting_id and line are required"}, status=status.HTTP_400_BAD_REQUEST)
-            meeting = get_object_or_404(Meeting, meeting_id=meeting_id)
+            meeting = _get_meeting_or_404(meeting_id)
             meeting.speech_to_text = _append_transcript_line(meeting.speech_to_text, line)
             meeting.save()
             return Response({"status": "appended"})
@@ -793,12 +847,7 @@ class MeetingHistoryView(APIView):
 
     def get(self, request, meeting_id):
         try:
-            meeting = Meeting.objects.filter(meeting_id=meeting_id).first()
-            if not meeting:
-                try:
-                    meeting = Meeting.objects.filter(pk=int(meeting_id)).first()
-                except (ValueError, TypeError):
-                    pass
+            meeting = _get_meeting_by_key(meeting_id)
             if not meeting:
                 return Response({"error": "Meeting not found"}, status=status.HTTP_404_NOT_FOUND)
 
@@ -838,7 +887,7 @@ class MeetingChatAppendView(APIView):
             if not message or not isinstance(message, dict):
                 return Response({"error": "message must be an object with text/sender/timestamp"}, status=status.HTTP_400_BAD_REQUEST)
 
-            meeting = get_object_or_404(Meeting, meeting_id=meeting_id)
+            meeting = _get_meeting_or_404(meeting_id)
 
             # Ensure chat_log is initialised
             if not hasattr(meeting, "chat_log") or not isinstance(meeting.chat_log, list):
@@ -858,3 +907,10 @@ class MeetingChatAppendView(APIView):
             print(traceback.format_exc())
             return Response({"error": "Failed to save chat message"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+class patient_details(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        patients = User.objects.filter(role="patient")
+        return Response([{"id": p.id, "name": p.get_full_name() or p.username} for p in patients])

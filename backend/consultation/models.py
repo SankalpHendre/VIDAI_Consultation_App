@@ -113,6 +113,7 @@ class Meeting(models.Model):
     department         = models.CharField(max_length=100, blank=True)
     remark             = models.TextField(blank=True)
     speech_to_text     = models.TextField(blank=True)
+    chat_log           = models.JSONField(default=list, blank=True)
     status             = models.CharField(max_length=20, choices=STATUS_CHOICES, default="scheduled")
     created_at         = models.DateTimeField(auto_now_add=True)
     updated_at         = models.DateTimeField(auto_now=True)

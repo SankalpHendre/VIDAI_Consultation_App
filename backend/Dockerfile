@@ -6,8 +6,8 @@ FROM python:3.12.10
 WORKDIR /app
 
 # 3. Copy the requirements file and install dependencies
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+COPY requirements_mini.txt .
+RUN pip install --no-cache-dir -r requirements_mini.txt
 
 # 4. Copy the rest of the Django project code
 COPY . .

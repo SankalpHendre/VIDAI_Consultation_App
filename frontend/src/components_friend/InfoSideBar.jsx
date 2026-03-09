@@ -39,14 +39,20 @@ const InfoSideBar = ({ activeSidebar, setActiveSidebar, patientData }) => {
                 <div className='info-card'>
                     <div className='sname'>First Name :</div>
                     <div className='pname'>{patientData?.first_name || "N/A"}</div>
+
                     <div className='sname'>Last Name :</div>
                     <div className='pname'>{patientData?.last_name || "N/A"}</div>
+
                     <div className='sname'>Sex Assigned At Birth :</div>
                     <div className='pname'>{patientData?.sex || "N/A"}</div>
+
                     <div className='sname'>Mobile No :</div>
                     <div className='pname'>{patientData?.mobile || "N/A"}</div>
+
+                    {/* Backend sends "date_of_birth" — matches this key exactly */}
                     <div className='sname'>Date of Birth :</div>
                     <div className='pname'>{patientData?.date_of_birth || "N/A"}</div>
+
                     <div className='sname'>Email ID :</div>
                     <div className='pname'>{patientData?.email || "N/A"}</div>
                 </div>
