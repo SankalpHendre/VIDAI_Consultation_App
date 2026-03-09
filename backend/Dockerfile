@@ -8,7 +8,7 @@ WORKDIR /app
 # 3. Copy the requirements file and install dependencies
 COPY requirements_mini.txt .
 RUN pip install --no-cache-dir -r requirements_mini.txt
-
+run
 # 4. Copy the rest of the Django project code
 COPY . .
 
